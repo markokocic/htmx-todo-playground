@@ -14,11 +14,36 @@
     [:head
      [:meta {:charset "UTF-8"}]
      [:title "Htmx + Kit"]
-     [:script {:src "https://unpkg.com/htmx.org@1.7.0/dist/htmx.min.js" :defer true}]
-     [:script {:src "https://unpkg.com/hyperscript.org@0.9.5/dist/_hyperscript.min.js" :defer true}]]
+     [:link
+      {:href "https://unpkg.com/todomvc-app-css@2.4.1/index.css"
+       :rel "stylesheet"}]
+     [:script
+      {:src "https://unpkg.com/htmx.org@1.7.0/dist/htmx.min.js" :defer true}]
+     [:script
+      {:src "https://unpkg.com/hyperscript.org@0.9.5/dist/_hyperscript.min.js"
+       :defer true}]]
     [:body
-     [:h1 "Welcome to Htmx + Kit module"]
-     [:button {:hx-post "/clicked" :hx-swap "outerHTML"} "Click me!"]]]))
+     [:section.todoapp
+      [:headerr.header
+       [:h1 "todos"]
+       [:p "todos form"]
+       [:p "new todo 2"]]]
+     [:section.main
+      [:p "main part"]]
+     [:ui#todo-list.todo-list
+      [:p "todo list"]]
+     [:footer.footer
+      [:p "item count"]
+      [:p "todo filters"]
+      [:p "clear completed button"]]
+     [:footer.info
+      [:p "Click to edit a todo"]
+      [:p "Created by "
+       [:a {:href "https://marko.euptera.com"} "Marko Kocic"]]
+      [:p "Inspired by "
+       [:a {:href "https://twitter.com/PrestanceDesign"} "Michaël Sλlihi"]]
+      [:p "Part of "
+       [:a {:href "http://todomvc.com"} "TodoMVC"]]]]]))
 
 (defn clicked [request]
   (ui
