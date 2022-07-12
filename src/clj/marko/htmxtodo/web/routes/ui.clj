@@ -3,9 +3,29 @@
    [marko.htmxtodo.web.middleware.exception :as exception]
    [marko.htmxtodo.web.routes.utils :as utils]
    [marko.htmxtodo.web.htmx :refer [ui] :as htmx]
+   [marko.htmxtodo.web.controllers.todos :as t]
    [integrant.core :as ig]
    [reitit.ring.middleware.muuntaja :as muuntaja]
    [reitit.ring.middleware.parameters :as parameters]))
+
+(defn todo-item [{:keys [id name done]}]
+  [:li {:id (str "todo-" id)
+        :class (when done "completed")}
+   [:div.view
+    [:input.toggle {:hx-patch (str "/todos/" id)
+                    :type "checkbox"
+                    :checked done
+                    :hx-target (str "#todo-" id)
+                    :hx-swap "outerHTML"}]
+    [:label {:hx-get (str "/todos/edit/" id)
+             :hx-target (str "#todo-" id)
+             :hx-swap "outerHTML"} name]
+    [:button.destroy {:hx-delete (str "/todos/" id)
+                      :_ (str "on htmx:afterOnLoad remove #todo-" id)}]]])
+
+(defn todo-list [todos]
+  (for [todo todos]
+    (todo-item (val todo))))
 
 (defn home [request]
   (ui
@@ -26,12 +46,20 @@
      [:section.todoapp
       [:headerr.header
        [:h1 "todos"]
-       [:p "todos form"]
-       [:p "new todo 2"]]]
+       [:form
+        {:hx-post "/todos"
+         :hx-target "#todo-list"
+         :hx-swap "beforeend"
+         :_ "on htmx:afterOnLoad set #txtTodo.value to ''"}
+        [:input#txtTodo.new-todo
+         {:name "todo"
+          :placeholder "What needs to be done?"
+          :autofocus ""}]]]]
      [:section.main
-      [:p "main part"]]
-     [:ui#todo-list.todo-list
-      [:p "todo list"]]
+      [:input#toggle-all.toggle-all {:type "checkbox"}]
+      [:label {:for "toggle-all"} "Mark all as complete"]]
+     [:ul#todo-list.todo-list
+      (todo-list @t/todos)]
      [:footer.footer
       [:p "item count"]
       [:p "todo filters"]
