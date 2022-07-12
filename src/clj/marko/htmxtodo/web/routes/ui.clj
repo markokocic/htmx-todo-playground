@@ -1,5 +1,6 @@
 (ns marko.htmxtodo.web.routes.ui
   (:require
+   [clojure.pprint :refer [cl-format] :as pp]
    [marko.htmxtodo.web.middleware.exception :as exception]
    [marko.htmxtodo.web.routes.utils :as utils]
    [marko.htmxtodo.web.htmx :refer [ui] :as htmx]
@@ -23,9 +24,33 @@
     [:button.destroy {:hx-delete (str "/todos/" id)
                       :_ (str "on htmx:afterOnLoad remove #todo-" id)}]]])
 
+(defn todo-edit [id name]
+  [:form {:hx-patch (str "/todos/update/" id)}
+   [:input.edit {:type :tex
+                 :name "name"
+                 :value name}]])
+
 (defn todo-list [todos]
   (for [todo todos]
     (todo-item (val todo))))
+
+(defn item-count []
+  (let [items-left (t/get-items-left)]
+    [:span#todo-count.todo-count {:hx-swap-oob "true"}
+     [:strong items-left] (cl-format nil " item~p " items-left) "left"]))
+
+(defn clear-completed-button []
+  [:button#clear-completed.clear-completed
+   {:hx-delete "/todos"
+    :hx-target "#todo-list"
+    :hx-swap-oob "true"
+    :hx-push-url "/"
+    :class (when-not (pos? (t/todos-completed)) "hidden")}
+   "Clear completed"])
+
+;;
+;; handlers
+;;
 
 (defn home [request]
   (ui
@@ -40,8 +65,7 @@
      [:script
       {:src "https://unpkg.com/htmx.org@1.7.0/dist/htmx.min.js" :defer true}]
      [:script
-      {:src "https://unpkg.com/hyperscript.org@0.9.5/dist/_hyperscript.min.js"
-       :defer true}]]
+      {:src "https://unpkg.com/hyperscript.org@0.9.5" :defer true}]]
     [:body
      [:section.todoapp
       [:headerr.header
@@ -61,9 +85,9 @@
      [:ul#todo-list.todo-list
       (todo-list @t/todos)]
      [:footer.footer
-      [:p "item count"]
-      [:p "todo filters"]
-      [:p "clear completed button"]]
+      (item-count)
+      [:span "todo filters"]
+      (clear-completed-button)]
      [:footer.info
       [:p "Click to edit a todo"]
       [:p "Created by "
@@ -73,14 +97,50 @@
       [:p "Part of "
        [:a {:href "http://todomvc.com"} "TodoMVC"]]]]]))
 
-(defn clicked [request]
-  (ui
-   [:div "Congratulations! You just clicked the button!"]))
+(defn add-item [{{name :todo} :params}]
+  (let [todo (t/add-todo! name)]
+    (ui (list (todo-item (val (last todo)))
+              (item-count)))))
+
+(defn patch-item [{{id :id} :path-params}]
+  (let [todo (t/toggle-todo! id)]
+    (ui (list (todo-item (get todo (Integer. id)))
+              (item-count)
+              (clear-completed-button)))))
+
+(defn delete-item [{{id :id} :path-params}]
+  (t/remove-todo! id)
+  (ui (item-count)))
+
+(defn edit-item [{{id :id} :path-params}]
+  (let [{:keys [id name]} (get @t/todos (Integer. id))]
+    (ui (todo-edit id name))))
+
+(defn update-item [{{id :id} :path-params {name :name} :params}]
+  (let [todo (t/update-todo! id name)]
+    (ui (todo-item (get todo (Integer. id))))))
+
+(defn clear-completed [_]
+  (t/remove-all-completed-todo)
+  (ui (list (todo-list @t/todos)
+            (item-count)
+            (clear-completed-button))))
+
 
 ;; Routes
 (defn ui-routes [_opts]
-  [["/" {:get #(home %)}]
-   ["/clicked" {:post clicked}]])
+  [["/"
+    {:get #(home %)}]
+   ["/todos"
+    {:post #(add-item %)
+     :delete #(clear-completed %)}]
+   ["/todos/:id"
+    {:patch #(patch-item %)
+     :delete #(delete-item %)}]
+   ["/todos/edit/:id"
+    {:get #(edit-item %)}]
+   ["/todos/update/:id"
+    {:patch #(update-item %)}]])
 
 (defn route-data [opts]
   (merge
